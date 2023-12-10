@@ -4,11 +4,11 @@ Ehco一键脚本
 A simple script to use Ehco Tunnel
 ## 国内中转可用
 ```bash
-wget -O ehco.sh https://linuxscript.netlify.app/ehco.sh && bash ehco.sh
+wget -O ehco.sh https://raw.githubusercontents.com/Naochen2799/Easy-ehco/main/ehco.sh && bash ehco.sh
 ```
 ## 国外落地使用
 ```bash
-wget -O ehco.sh https://raw.githubusercontent.com/owogo/EasyEhco/main/ehco.sh && bash ehco.sh
+wget -O ehco.sh https://raw.githubusercontent.com/Naochen2799/Easy-ehco/main/ehco.sh && bash ehco.sh
 ```
 再次使用脚本： ```bash ehco.sh```
 
