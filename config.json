@@ -1,7 +1,7 @@
 {
-  "web_port": 8888,
-  "web_token": "WDNMD",
-  "enable_ping": true,
+  "web_port": 9000,
+  "web_token": "",
+  "enable_ping": false,
 
   "relay_configs": [
    
