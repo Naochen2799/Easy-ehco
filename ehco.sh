@@ -1,22 +1,29 @@
-#!/bin/bash
-#脚本版本
-Shell_Version="0.0.1"
+#! /bin/bash
+Green_font_prefix="\033[32m" && Red_font_prefix="\033[31m" && Green_background_prefix="\033[42;37m" && Font_color_suffix="\033[0m"
 Info="${Green_font_prefix}[信息]${Font_color_suffix}"
 Error="${Red_font_prefix}[错误]${Font_color_suffix}"
-#	Github: https://github.com/owogo/easyehco
-#=================================================================
+shell_version="0.0.1"
 ehco_conf_path="/etc/ehco/config.json"
 raw_conf_path="/etc/ehco/rawconf"
-red='\033[0;31m'
-plain='\033[0m'
-
-Green_font_prefix="\033[32m" && Red_font_prefix="\033[31m" && Green_background_prefix="\033[42;37m" && Font_color_suffix="\033[0m"
-#确保本脚本在ROOT下运行
-[[ $EUID -ne 0 ]] && echo -e "[${red}错误${plain}]请以ROOT运行本脚本！" && exit 1
-
-check_sys(){
-	echo "现在开始检查你的系统是否支持"
-	#判断是什么Linux系统
+function checknew() {
+  checknew=$(ehco -v 2>&1 | grep "Version=")
+  check_new_ver
+  echo "你的ehco版本为:""$checknew"""
+  echo -n 是否更新\(y/n\)\:
+  read checknewnum
+  if test $checknewnum = "y"; then
+    cp -r /etc/ehco /tmp/
+    Install_ct
+    rm -rf /etc/ehco
+    mv /tmp/ehco /etc/
+    systemctl restart ehco.service
+  else
+    exit 0
+  fi
+}
+function check_sys(){
+	echo "检查系统是否支持"
+	#判断Linux系统
 	if [[ -f /etc/redhat-release ]]; then
 		release="Centos"
 	elif cat /etc/issue | grep -q -E -i "debian"; then
@@ -33,7 +40,7 @@ check_sys(){
 		release="Centos"
 	fi
 	
-	#判断Linux系统的具体版本和位数
+	#判断系统版本和位数
 	if [[ -s /etc/redhat-release ]]; then
 		version=`grep -oE  "[0-9.]+" /etc/redhat-release | cut -d . -f 1`
 	else
@@ -74,24 +81,6 @@ check_sys(){
 		exit 1
 	fi
 }
-
-function checknew() {
-  checknew=$(ehco -v 2>&1 | grep "Version=")
-  check_new_ver
-  echo "你的ehco版本为:""$checknew"""
-  echo -n 是否更新\(y/n\)\:
-  read checknewnum
-  if test $checknewnum = "y"; then
-    cp -r /etc/ehco /tmp/
-    Install_ct
-    rm -rf /etc/ehco
-    mv /tmp/ehco /etc/
-    systemctl restart ehco.service
-  else
-    exit 0
-  fi
-}
-
 function check_new_ver() {
   ct_new_ver=$(wget --no-check-certificate -qO- -t2 -T3 https://api.github.com/repos/ehco1996/ehco/releases/latest | grep "tag_name" | head -n 1 | awk -F ":" '{print $2}' | sed 's/\"//g;s/,//g;s/ //g;s/v//g')
   if [[ -z ${ct_new_ver} ]]; then
@@ -123,11 +112,11 @@ function check_nor_file() {
   check_file
   check_new_ver
   rm -rf ehco_"$ct_new_ver"_linux_"$bit"
-  wget  --no-check-certificate https://github.com/Ehco1996/ehco/releases/download/v"$ct_new_ver"/ehco_"$ct_new_ver"_linux_"$bit" -O ehco
+  wget  --no-check-certificate https://mirror.ghproxy.com/https://github.com/Ehco1996/ehco/releases/download/v"$ct_new_ver"/ehco_"$ct_new_ver"_linux_"$bit" -O ehco
   chmod +x ehco
   mv ehco /usr/bin
-  wget --no-check-certificate https://raw.githubusercontent.com/owogo/easyehco/master/ehco.service && mv ehco.service $sysctl_dir
-  mkdir /etc/ehco && wget --no-check-certificate https://raw.githubusercontent.com/owogo/easyehco/master/config.json && mv config.json /etc/ehco
+  wget --no-check-certificate https://raw.githubusercontents.com/Naochen2799/Easy-ehco/main/ehco.service && mv ehco.service $sysctl_dir
+  mkdir /etc/ehco && wget --no-check-certificate https://raw.githubusercontents.com/Naochen2799/Easy-ehco/main/config.json && mv config.json /etc/ehco
   systemctl daemon-reload
   systemctl start ehco.service
   systemctl enable ehco.service
@@ -141,7 +130,7 @@ function check_nor_file() {
     rm -rf "$(pwd)"/ehco.service
     rm -rf "$(pwd)"/config.json
   else
-    echo "ehco没有安装成功"
+    echo "ehco安装失败"
     rm -rf "$(pwd)"/ehco
     rm -rf "$(pwd)"/ehco.service
     rm -rf "$(pwd)"/config.json
@@ -159,14 +148,10 @@ function Uninstall_ct() {
 function Start_ct() {
   systemctl start ehco.service
   echo "已启动"
-  sleep 3s
-  start_menu
 }
 function Stop_ct() {
   systemctl stop ehco.service
   echo "已停止"
-  sleep 3s
-  start_menu
 }
 function Restart_ct() {
   rm -rf /etc/ehco/config.json
@@ -175,22 +160,13 @@ function Restart_ct() {
   conflast
   systemctl restart ehco.service
   echo "已重读配置并重启"
-  sleep 3s
-  start_menu
 }
 function read_protocol() {
   echo -e "请问您要设置哪种功能: "
   echo -e "-----------------------------------"
-  echo -e "[1] tcp+udp流量转发, 不加密"
-  echo -e "说明: 一般设置在国内中转机上"
-  echo -e "-----------------------------------"
-  echo -e "[2] 加密隧道流量转发"
-  echo -e "说明: 用于转发原本加密等级较低的流量, 一般设置在国内中转机上"
-  echo -e "     选择此协议意味着你还有一台机器用于接收此加密流量, 之后须在那台机器上配置协议[3]进行对接"
-  echo -e "-----------------------------------"
-  echo -e "[3] 解密由ehco传输而来的流量并转发"
-  echo -e "说明: 对于经由ehco加密中转的流量, 通过此选项进行解密并转发给本机的代理服务端口或转发给其他远程机器"
-  echo -e "      一般设置在用于接收中转流量的国外机器上"
+  echo -e "[1] 无加密流量转发"
+  echo -e "[2] 加密流量并转发"
+  echo -e "[3] 解密流量并转发"
   echo -e "-----------------------------------"
   read -p "请选择: " numprotocol
 
@@ -201,11 +177,10 @@ function read_protocol() {
   elif [ "$numprotocol" == "3" ]; then
     decrypt
   else
-    echo "type error, please try again"
+    echo "输入无效,请重试"
     exit
   fi
 }
-
 function encrypt() {
   echo -e "请问您要设置的转发传输类型: "
   echo -e "-----------------------------------"
@@ -223,11 +198,10 @@ function encrypt() {
   elif [ "$numencrypt" == "3" ]; then
     flag_a="encryptmwss"
   else
-    echo "type error, please try again"
+    echo "输入无效,请重试"
     exit
   fi
 }
-
 function decrypt() {
   echo -e "请问您要设置的解密传输类型: "
   echo -e "-----------------------------------"
@@ -245,11 +219,10 @@ function decrypt() {
   elif [ "$numdecrypt" == "3" ]; then
     flag_a="decryptmwss"
   else
-    echo "type error, please try again"
+    echo "输入无效,请重试"
     exit
   fi
 }
-
 function method() {
   if [ $i -ge 1 ]; then
     if [ "$is_encrypt" == "nonencrypt" ]; then
@@ -297,14 +270,13 @@ function method() {
       \"tcp_remotes\": [\"$d_ip:$d_port\"],
       \"udp_remotes\": [\"$d_ip:$d_port\"]" >>$ehco_conf_path
     else
-      echo "config error"
+      echo "配置错误"
     fi
   else
-    echo "config error"
+    echo "配置错误"
     exit
   fi
 }
-
 function read_s_port() {
   echo -e "请问你要将本机哪个端口接收到的流量进行转发?"
   read -p "请输入: " flag_b
@@ -355,7 +327,6 @@ function conflast() {
   echo "   ]
 }" >>$ehco_conf_path
 }
-
 function multiconflast() {
   if [ $i -eq $count_line ]; then
     echo "           }" >>$ehco_conf_path
@@ -363,7 +334,6 @@ function multiconflast() {
     echo "           }," >>$ehco_conf_path
   fi
 }
-
 function writeconf() {
   count_line=$(awk 'END{print NR}' $raw_conf_path)
   for ((i = 1; i <= $count_line; i++)); do
@@ -415,7 +385,6 @@ function show_all_conf() {
     echo -e "--------------------------------------------------------"
   done
 }
-
 cron_restart() {
   echo -e "------------------------------------------------------------------"
   echo -e "ehco定时重启任务: "
@@ -458,7 +427,7 @@ function start_menu(){
     clear
 	echo && echo -e "          ehco 一键安装配置脚本
 	  功能: 1.tcp+udp不加密转发, 2.中转机加密转发, 3.落地机解密对接转发
-	  帮助文档：https://github.com/owogo/EasyEhco
+	  帮助文档：https://github.com/Naochen2799/Easy-ehco
 	 ${Green_font_prefix}0.${Font_color_suffix} 退出脚本
 	 ${Green_font_prefix}1.${Font_color_suffix} 安装 ehco
 	 ${Green_font_prefix}2.${Font_color_suffix} 更新 ehco
@@ -535,7 +504,7 @@ function start_menu(){
 	  ;;
 	11)
 	  rm ehco.sh
-	  wget -O ehco.sh https://raw.githubusercontent.com/owogo/EasyEhco/main/ehco.sh && bash ehco.sh
+	  wget -O ehco.sh https://raw.githubusercontents.com/Naochen2799/Easy-ehco/main/ehco.sh && bash ehco.sh
 	  ;;
 	*)
 	  echo "请输入正确数字"
